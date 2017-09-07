@@ -9,7 +9,7 @@ import (
 )
 
 type Notices struct {
-	Id      int64 `orm:"pk;column(noticeid)"`
+	Id      int64 `orm:"pk;column(noticeid);"`
 	Title   string
 	Content string
 	Created string
@@ -104,4 +104,25 @@ func CountNotices(condArr map[string]string) int64 {
 	}
 	num, _ := qs.SetCond(cond).Count()
 	return num
+}
+
+//更改状态
+func ChangeNoticeStatus(id int64, status int) error {
+	o := orm.NewOrm()
+
+	not := Notices{Id: id}
+	err := o.Read(&not, "noticeid")
+	if nil != err {
+		return err
+	} else {
+		not.Status = status
+		_, err := o.Update(&not)
+		return err
+	}
+}
+
+func DeleteNotice(id int64) error {
+	o := orm.NewOrm()
+	_, err := o.Delete(&Notices{Id: id})
+	return err
 }
