@@ -35,3 +35,81 @@ func GetPermission(id int64) string {
 	}
 	return name
 }
+
+type UserPermissionsAll struct {
+	Permission string
+	Groupid    string
+}
+
+func GetPermission(id int64) (UserPermissionsAll, error) {
+	var pers []UserPermissions
+	var err error
+
+	qb, _ := orm.NewQueryBuilder("mysql")
+	qb.Select("p.ename As permission", "gu.groupid").From("pms_groups_user As gu")
+	LeftJoin("pms_groups_permission AS gp").On("gp.groupid = gu.groupid")
+	LeftJoin("pms_permissions AS p").On("p.permissionid = gp.permissionid")
+	Where("gu.userid=?")
+	sql := qb.String()
+	o := orm.NewOrm()
+	_, err = o.Raw(sql, id).QueryRows(&pers)
+
+	var perimissionstring = ""
+	var groupidstring = ""
+	for _, v := range pers {
+		perimissionstring += v.Permissions + ","
+		groupidstring += v.Groupid + ","
+	}
+	groupidstring := strings.Split(strings.Trim(groupidstring, ","), ",")
+	groupMap := utils.RemoveDuplicatesAndEmpty(groupidstring)
+	groupidstring = ""
+
+	for _, v := range groupMap {
+		groupidstring += v + ","
+	}
+	var per UserPermissionsAll
+	per.Permission = strings.Trim(perimissionstring, ",")
+	per.Groupid = strings.Trim(groupidstring, ",")
+	return per, err
+
+}
+
+func GetPermissionsAllOld(id int64) (UsersPermissions, error) {
+	var per UsersPermissions
+	var err error
+	o := orm.NewOrm()
+
+	per = UsersPermissions{Id: id}
+	err = o.Read(&per)
+
+	if err == orm.ErrNoRows {
+		return per, nil
+	}
+	return per, err
+}
+
+func AddPermissions(updDep UsersPermissions) error {
+	o := orm.NewOrm()
+	o.Using("default")
+	per := new(UsersPermissions)
+
+	per.Id = updDep.Id
+	per.Permission = updDep.Permission
+	per.Model = updDep.Model
+	per.Modelc = updDep.Modelc
+	_, err := o.Insert(per)
+
+	return err
+}
+
+func UpdatePermissions(id int64, updDep UsersPermissions) error {
+	var per UsersPermissions
+	o := orm.NewOrm()
+	per = UsersPermissions{Id: id}
+
+	per.Permission = updDep.Permission
+	per.Model = updDep.Model
+	per.Modelc = updDep.Modelc
+	_, err := o.Update(&per, "permission", "model", "modelc")
+	return err
+}
